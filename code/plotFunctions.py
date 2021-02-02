@@ -473,3 +473,50 @@ def ResidsGalTypeLumSigma(df):
     plt.subplots_adjust(right=0.85)
 
     plt.savefig('/Users/kessler.363/Thesis/Concentrationz0mgs/plots/Resids_R25_sigma_galtype.png',bbox_inches='tight')
+    
+    
+def sixPanelSFMS(df,galtype,cols):
+
+    bandsu = [b.upper() for b in bands]
+    
+    test = df[cols].copy()
+    c = dict(zip(test.columns[:6],bandsu))
+    test = test.rename(columns=c)
+    
+    lt = test[test.GALTYPE_COURSE == galtype]
+    lt = lt.drop(columns = 'GALTYPE_COURSE')
+    
+    for b in bands:
+        lt[b.upper()] = np.log10(lt[b.upper()])
+        
+    ltmelt = lt.melt(id_vars='LOGMASS')
+    med = pandasFunctions.rollingmedainXY(lt,'LOGMASS',np.arange(8.5,12,.2))
+    
+    g = sns.FacetGrid(ltmelt,col='variable',col_wrap=2,height=2.75,aspect=1,sharex =True,sharey=True,hue = 'variable',palette=cs,despine=False)
+    g.map_dataframe(sns.scatterplot,x='LOGMASS',y='value',alpha=0.6,marker='.')
+    axes = g.fig.axes
+    for b in np.arange(len(bandsu)):
+        axes[b].plot(med.LOGMASS,med[bandsu[b]],color=cs[b],lw=3)
+        axes[b].annotate('n='+str(len(lt[bandsu[b]][~np.isnan(lt[bandsu[b]])])),(10,38),fontsize=14)
+    g.fig.subplots_adjust(wspace=0.05, hspace=0.05)
+    g.add_legend()
+
+    g._legend.set_title('')
+    g.set_titles('')
+    for lh in g._legend.legendHandles:
+        lh.set_alpha(1)
+        lh._sizes = [50]
+    g.fig.text(x=0.5,y=0.05,horizontalalignment='center',s = r'log(M$_*$) [M$_{\odot}$]',fontsize=14)
+    g.fig.text(x=0.05,y=0.5,verticalalignment='center',s = r'log($\nu$L$_{\nu}$(Band)$_{R25}$) [erg/s]',rotation=90,fontsize=14)
+    g.fig.subplots_adjust(bottom=.1)
+    g.fig.subplots_adjust(left=.15)
+    plt.subplots_adjust(top=0.95)
+    if galtype == 'LT':
+        g.fig.suptitle('Late Type')
+    else:
+        g.fig.suptitle('Early Type')
+        
+        
+    plt.savefig('/Users/kessler.363/Thesis/Concentrationz0mgs/plots/SFMS_scatter_'+galtype+'.png',bbox_inches='tight')
+    plt.close('all')
+
