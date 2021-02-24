@@ -552,7 +552,7 @@ def makeSixPanelDensity(df):
     for ax in np.arange(len(axes)):
             axes[ax].plot(xs,ys,'k:')
     
-    fig.text(x=0.05,y=0.5,verticalalignment='center',s = r'log($\nu$L$_{\nu}$(Band)$_{R25}$) [erg/s]',rotation=90,fontsize=14)
+    fig.text(x=0.05,y=0.5,verticalalignment='center',s = r'log($\nu$L$_{\nu}$(Band)$_{R_e}$) [erg/s]',rotation=90,fontsize=14)
     fig.text(x=0.5,y=0.05,horizontalalignment='center',s = r'log(M$_*$) [M$_{\odot}$]',fontsize=14)
     fig.subplots_adjust(left=.15)
     fig.subplots_adjust(bottom=.1)
@@ -560,6 +560,44 @@ def makeSixPanelDensity(df):
     plt.savefig('/Users/kessler.363/Thesis/Concentrationz0mgs/plots/SFMS_scatter_split_unityline.png',bbox_inches='tight')
     plt.close('all')
     
+def makeSixPanelDensityRe(df):
+    cols = ['W1_1p0REFF','W2_1p0REFF','W3_1p0REFF','W4_1p0REFF','NUV_1p0REFF','FUV_1p0REFF','LOGMASS','GALTYPE_COURSE']
+    test = df[cols].copy()
+    for col in test.columns:
+        if col.split('_')[0] in bandsu:
+            test[col] = np.log10(test[col])
+
+    et = test[test.GALTYPE_COURSE == 'ET']
+    lt = test[test.GALTYPE_COURSE == 'LT']
+
+    fig, axes = plt.subplots(3,2, sharex=True, sharey=True,figsize = (2.75*2,2.75*3))
+    axes = axes.ravel()
+
+
+    for ax in np.arange(len(axes)):
+        sns.kdeplot(data=et,x='LOGMASS',y=bandsu[ax]+'_1p0REFF',fill=False,ax=axes[ax],color='gray',zorder=2)
+        sns.kdeplot(data=lt,x='LOGMASS',y=bandsu[ax]+'_1p0REFF',fill=True,ax=axes[ax],color=cs[ax],zorder=1)
+
+    plt.ylim(38,45)
+    xl,xh =plt.xlim()
+    yl,yh =plt.ylim()
+
+    for ax in axes:
+        ax.set_xlabel('')
+        ax.set_ylabel('')
+
+    xs,ys = np.linspace(xl,xh,50),np.linspace(yl,yh,50)
+    for ax in np.arange(len(axes)):
+            axes[ax].plot(xs,ys,'k:')
+
+    fig.text(x=0.05,y=0.5,verticalalignment='center',s = r'log($\nu$L$_{\nu}$(Band)$_{R_e}$) [erg/s]',rotation=90,fontsize=14)
+    fig.text(x=0.5,y=0.05,horizontalalignment='center',s = r'log(M$_*$) [M$_{\odot}$]',fontsize=14)
+    fig.subplots_adjust(left=.15)
+    fig.subplots_adjust(bottom=.1)
+    fig.subplots_adjust(wspace=0.05,hspace=0.05)
+    plt.savefig('/Users/kessler.363/Thesis/Concentrationz0mgs/plots/SFMS_Re_density_split_unityline.png',bbox_inches='tight')
+    plt.close('all')
+
     
 def makeConcentrationReffKDE(df):
 
@@ -571,18 +609,22 @@ def makeConcentrationReffKDE(df):
     
     fig, axes = plt.subplots(3,2, sharex=True, sharey=True,figsize = (2.75*2,2.75*3))
     axes = axes.ravel()
-    
+    ys = [-2,-2.2,-2.4,-2.6,-2.8,-3.0]
+    ys2 = [y+.4 for y  in ys]
+
     for ax in np.arange(len(axes)):
         mask = np.isfinite(et[bands[ax]])
         sns.kdeplot(et.LOGMASS[mask],et[bands[ax]][mask],fill=False,ax=axes[ax],color='gray',zorder=2)
+        axes[ax].annotate('n='+str(len(et[bands[ax]][~np.isnan(et[bands[ax]])])),(8.5,ys[ax]),fontsize=12,color='gray')
         mask = np.isfinite(lt[bands[ax]])
         sns.kdeplot(lt.LOGMASS[mask],lt[bands[ax]][mask],fill=True,ax=axes[ax],color=cs[ax],zorder=1)
+        axes[ax].annotate('n='+str(len(lt[bands[ax]][~np.isnan(lt[bands[ax]])])),(8.5,ys2[ax]),fontsize=12,color=cs[ax])
 
     for ax in axes:
         ax.set_xlabel('')
         ax.set_ylabel('')
 
-    plt.ylim(-5,2)
+    plt.ylim(-4,2)
 
     fig.text(x=0.05,y=0.5,verticalalignment='center',s = r'log($\nu$L$_{\nu}$ (2kpc) / $\nu$L$_{\nu}$ (R$_e$))',rotation=90,fontsize=14)
     fig.text(x=0.5,y=0.05,horizontalalignment='center',s = r'log(M$_*$) [M$_{\odot}$]',fontsize=14)
@@ -599,25 +641,83 @@ def makeConcentrationReffLineplot(df):
     
     et = test[test.GALTYPE_COURSE == 'ET']
     lt = test[test.GALTYPE_COURSE == 'LT']
-    medlt = pandasFunctions.rollingmedainXY(lt.copy(),'LOGMASS',np.arange(8.5,12,.5))
-    medet = pandasFunctions.rollingmedainXY(et.copy(),'LOGMASS',np.arange(8.5,12,.5))
+    medlt = pandasFunctions.rollingmedainXY(lt.copy(),'LOGMASS',np.arange(8.5,11.1,.2))
+    medet = pandasFunctions.rollingmedainXY(et.copy(),'LOGMASS',np.arange(8.5,11.1,.2))
 
     fig, axes = plt.subplots(1,2, sharex=True, sharey=True,figsize = (8,4))
 
     axes = axes.ravel()
-    
+    ys = [0.5,0.4,0.3,0.2,0.1,0]
     for b in range(len(bands)):
-        sns.lineplot(data=medlt,x='LOGMASS',y=bands[b],ax=axes[0],color=cs[b],lw=3,alpha=0.8)
-        sns.lineplot(data=medet,x='LOGMASS',y=bands[b],ax=axes[1],color=cs[b],lw=3,alpha=0.8)
-   
+        axes[0].plot(medlt['LOGMASS'],medlt[bands[b]],color=cs[b],lw=3,alpha=0.8,label = bandsu[b])
+        axes[0].annotate('n='+str(len(lt[bands[b]][~np.isnan(lt[bands[b]])])),(10,ys[b]),fontsize=12,color=cs[b])
+        axes[1].annotate('n='+str(len(et[bands[b]][~np.isnan(et[bands[b]])])),(10,ys[b]),fontsize=12,color=cs[b])
+
+        axes[1].plot(medet['LOGMASS'],medet[bands[b]],color=cs[b],lw=3,alpha=0.8)
+
     for ax in axes:
          ax.set_xlabel('')
          ax.set_ylabel('')
+    axes[0].set_title('Late Type')
+    axes[1].set_title('Early Type')
 
     fig.text(x=0.05,y=0.5,verticalalignment='center',s = r'log($\nu$L$_{\nu}$ (2kpc) / $\nu$L$_{\nu}$ (R$_e$))',rotation=90,fontsize=14)
     fig.text(x=0.5,y=0.05,horizontalalignment='center',s = r'log(M$_*$) [M$_{\odot}$]',fontsize=14)
-    fig.subplots_adjust(left=.15)
+    fig.subplots_adjust(left=.135)
     fig.subplots_adjust(bottom=.18)
     fig.subplots_adjust(wspace=0.02,hspace=0.02)
+    
+    fig.legend(loc="center right",borderaxespad=0.9)
+    plt.subplots_adjust(right=0.85)
     plt.savefig('/Users/kessler.363/Thesis/Concentrationz0mgs/plots/Concentration_lineplot_Re_galtype.png',bbox_inches='tight',metadata={'Code':'plotFunctions.makeConcentrationReffLineplot'})
     plt.close('all')
+
+def sixPanelConcentrationMed(df,cols):
+
+    test = df[cols].copy()
+
+        
+    ltmelt = test.melt(id_vars=['LOGMASS','T'])
+    med = pandasFunctions.rollingmedainXY(test,'T',np.arange(-5,10.5,.5))
+
+    g = sns.FacetGrid(ltmelt,col='variable',col_wrap=2,height=2.75,aspect=1,sharex =True,sharey=True,hue = 'variable',palette=cs,despine=False)
+    g.map_dataframe(sns.scatterplot,x='T',y='value',alpha=0.6,marker='.')
+    axes = g.fig.axes
+    for b in np.arange(len(bands)):
+        axes[b].plot(med['T'],med[bands[b]],color=cs[b],lw=3)
+    g.fig.subplots_adjust(wspace=0.05, hspace=0.05)
+    g.add_legend()
+
+    g._legend.set_title('')
+    g.set_titles('')
+    for lh in g._legend.legendHandles:
+        lh.set_alpha(1)
+        lh._sizes = [50]
+    g.fig.text(x=0.5,y=0.05,horizontalalignment='center',s = r'T',fontsize=14)
+    g.fig.text(x=0.05,y=0.5,verticalalignment='center',s = r'log($\nu$L$_{\nu}$ (2kpc) / $\nu$L$_{\nu}$ (R$_e$))',rotation=90,fontsize=14)
+    
+    plt.ylim(-3,2)
+    g.fig.subplots_adjust(bottom=.1)
+    g.fig.subplots_adjust(left=.15)
+    plt.subplots_adjust(top=0.95)
+        
+    plt.savefig('/Users/kessler.363/Thesis/Concentrationz0mgs/plots/Concentration_T_scatter.png',bbox_inches='tight')
+    plt.close('all')
+
+
+g = sns.FacetGrid(ltmelt,col='variable',col_wrap=2,height=2.75,aspect=1,sharex =True,sharey=True,hue = 'variable',palette=cs,despine=False)
+g.map_dataframe(sns.lineplot,x='T',y='value',estimator='mean')
+axes = g.fig.axes
+g.fig.subplots_adjust(wspace=0.05, hspace=0.05)
+g.set_titles('')
+g.fig.text(x=0.5,y=0.05,horizontalalignment='center',s = r'T',fontsize=14)
+g.fig.text(x=0.05,y=0.5,verticalalignment='center',s = r'log($\nu$L$_{\nu}$ (2kpc)',rotation=90,fontsize=14)
+
+plt.ylim(39,43)
+g.fig.subplots_adjust(bottom=.1)
+g.fig.subplots_adjust(left=.18)
+plt.subplots_adjust(top=0.95)
+plt.savefig('/Users/kessler.363/Thesis/Concentrationz0mgs/plots/2kpc_T_line.png',bbox_inches='tight')
+plt.close('all')
+
+
