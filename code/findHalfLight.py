@@ -44,7 +44,7 @@ def estimateHalfLight(df,galnames,b):
                 area = cs[-1]
                 halflightloc = np.where(cs>(area/2.0))[0][0]
                 
-                halflight = xnew[halflightloc+lennans]*1.25
+                halflight = xnew[halflightloc+lennans]*1.0
                 halflights.append(halflight)
                 pgcs.append(galname)
                 nanmasks.append(numnans)
@@ -58,32 +58,34 @@ def estimateHalfLight(df,galnames,b):
     return(halflights,pgcs,nanmasks,whys)
         
 def fitLogFunc(df,ind,b):
+    try:
+        dist =df.loc[ind].DIST_MPC
+        r25 = df.loc[ind].R25_DEG
+        radii_arcsec = np.asarray([r*r25*3600 for r in radii])
+        
+        suffixes=['0p25R25','0p5R25','0p75R25','1p0R25','1p25R25','1p5R25','2p0R25']
+        cols = [b.upper()+'_'+s for s in suffixes]
+        yval = df.loc[ind][cols].values.astype(float)
 
-    dist =df.loc[ind].DIST_MPC
-    r25 = df.loc[ind].R25_DEG
-    radii_arcsec = np.asarray([r*r25*3600 for r in radii])
-    
-    suffixes=['0p25R25','0p5R25','0p75R25','1p0R25','1p25R25','1p5R25','2p0R25']
-    cols = [b.upper()+'_'+s for s in suffixes]
-    yval = df.loc[ind][cols].values.astype(float)
+        areas = (np.pi*((radii_arcsec*u.arcsec.to(u.radian))*dist*1e6)**2)
+        
+        sb = yval/(areas)
+        nanmask = np.isnan(yval)
+        radii_arcsec = radii_arcsec[~nanmask]
+        yval = yval[~nanmask]
 
-    areas = (np.pi*((radii_arcsec*u.arcsec.to(u.radian))*dist*1e6)**2)
-    
-    sb = yval/(areas)
-    nanmask = np.isnan(yval)
-    radii_arcsec = radii_arcsec[~nanmask]
-    yval = yval[~nanmask]
-
-    numnans = len(nanmask[nanmask==True])
-    
-    if len(yval)==0:
-        return(np.nan,np.nan,numnans,'All NaN')
-    else:
-        try:
-            popt, pcov = curve_fit(func, np.log10(radii_arcsec),np.log10(yval))
-            xnew = np.logspace(1e-3,np.log10(radii_arcsec[-1]),500)
-            ypred = func(xnew,*popt)
-            return(xnew,ypred,numnans,'')
-            
-        except:
-            return(np.nan,np.nan,numnans,'Fit wouldnt work')
+        numnans = len(nanmask[nanmask==True])
+        
+        if len(yval)==0:
+            return(np.nan,np.nan,numnans,'All NaN')
+        else:
+            try:
+                popt, pcov = curve_fit(func, np.log10(radii_arcsec),np.log10(yval))
+                xnew = np.logspace(1e-3,np.log10(radii_arcsec[-1]),500)
+                ypred = func(xnew,*popt)
+                return(xnew,ypred,numnans,'')
+                
+            except:
+                return(np.nan,np.nan,numnans,'Fit wouldnt work')
+    except:
+        return(np.nan,np.nan,numnans,'Something weird')
