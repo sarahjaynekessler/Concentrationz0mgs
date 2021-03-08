@@ -9,7 +9,7 @@ import astropy.units as u
 import astropy.constants as const
 import pandas as pd
 
-def runApertureLoop(path,df,bands,ind=None):
+def runApertureLoop(path,df,bands,inputres,ind=None):
     pgcnames = ['PGC'+ str(i) for i in df.PGC.astype('int')]
     if ind==None:
         ind = len(pgcnames)
@@ -19,6 +19,7 @@ def runApertureLoop(path,df,bands,ind=None):
     wavesum = {'fuv':1540*1e-4,'nuv':2310*1e-4,'w1':3.4,'w2':4.6,'w3':12,'w4':22}
 
     for i in np.arange(len(pgcnames[:ind])):
+        print(len(pgcnames[:ind]) - i)
         for band in bands:
             file = glob(path+pgcnames[i]+'_*'+band+'*'+inputres+'.fits')
             stars = glob(path+pgcnames[i]+'_*'+band+'*'+inputres+'_stars.fits')
@@ -61,5 +62,5 @@ def lightProfile(f,stars,df,i,band,wavlength,pgc):
     ys = np.cumsum(sorteddata)/np.cumsum(sorteddata).max()
     
     galdf = pd.DataFrame({'r_arcsec':xs,'I':sorteddata,'Norm_I':ys})
-    galdf.to_csv('galaxycsvs/'+pgc+'_df.csv',index=None)
+    galdf.to_csv('galaxycsvs/'+pgc+'_'+band+'_df.csv',index=None)
     

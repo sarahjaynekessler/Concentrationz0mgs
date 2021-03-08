@@ -3,7 +3,11 @@ import numpy as np
 import pandas as pd
 from gal_data import gal_data
 from astropy import units as u
-
+from astropy.modeling import models, fitting
+from astropy.stats import sigma_clip
+from astropy.modeling.models import Sersic1D
+import warnings
+warnings.filterwarnings("ignore")
 
 xnew = np.arange(0.25,2.0,.01)
 radii = [.25,.5,.75,1.0,1.25,1.5,2.0]
@@ -57,7 +61,7 @@ def estimateHalfLight(df,galnames,b):
             
     return(halflights,pgcs,nanmasks,whys)
         
-def fitLogFunc(df,ind,b):
+def fitLogFuncAp(df,ind,b):
     try:
         dist =df.loc[ind].DIST_MPC
         r25 = df.loc[ind].R25_DEG
@@ -89,3 +93,121 @@ def fitLogFunc(df,ind,b):
                 return(np.nan,np.nan,numnans,'Fit wouldnt work')
     except:
         return(np.nan,np.nan,numnans,'Something weird')
+        
+def expfunc(x, a, b, c):
+    return a*np.exp(-b*x) + c
+    
+def logfunc(x, a, b, c): # x-shifted log
+    return a*np.log(x + b)+c
+        
+def fitExponentialFunc(rp):
+    norm_x = rp.r_arcsec.min()
+    norm_y = rp.I.max()
+    fx2 = rp.r_arcsec - norm_x + 1
+    fy2 = rp.I/norm_y
+    
+    popt, pcov = curve_fit(expfunc, fx2,fy2, p0=(1,1,1), maxfev=6000)
+    
+    mask = fy2>expfunc(fx2,*popt)
+    
+    rp = rp[~mask]
+    
+    return(rp,norm_x,norm_y,fx2,fy2)
+    
+def fitLogFunc(rp):
+    norm_x = rp.r_arcsec.min()
+    norm_y = np.cumsum(rp.I).max()
+    fx2 = rp.r_arcsec - norm_x + 1
+    fy2 = np.cumsum(rp.I)/norm_y
+    
+    popt, pcov = curve_fit(logfunc, fx2,fy2, p0=(1,1,1), maxfev=6000)
+    
+    return(rp,norm_x,norm_y,fx2,fy2,popt,pcov)
+        
+def findHalfLightSersicdf(pgcs,df1,df2):
+    halflights = []
+    amps = []
+    ns = []
+    datamasks = []
+    nummasked = []
+    #print('0')
+    for i in np.arange(len(pgcs)):
+        print(len(pgcs)-i)
+        galmask = df2.gal.isin([pgcs[i]])
+        rp = df2.loc[galmask]
+        if np.isnan(rp.r_arcsec).all()==True:
+            halflights.append('All NaN')
+            amps.append(np.nan)
+            ns.append(np.nan)
+            datamasks.append(np.nan)
+            nummasked.append(np.nan)
+            #print('1')
+        elif rp.r_arcsec.min()>200:
+            halflights.append('Bad Decomp')
+            amps.append(np.nan)
+            ns.append(np.nan)
+            datamasks.append(np.nan)
+            nummasked.append(np.nan)
+            #print('2')
+        else:
+            try:
+                r25 = df1.loc[i].R25_DEG*3600
+                mask = rp.r_arcsec<2*r25
+                rp = rp[mask]
+                #mask = rp.I>0
+                #rp = rp[mask]
+                
+                sersic = models.Sersic1D()
+                outlier_fit = fitting.FittingWithOutlierRemoval(fitting.LevMarLSQFitter(),sigma_clip, niter=3, sigma=2.0)
+                fitted_model,filtered_data = outlier_fit(sersic,rp.r_arcsec,rp.I)
+                
+                    
+                halflights.append(fitted_model.r_eff.value)
+                amps.append(fitted_model.amplitude.value)
+                ns.append(fitted_model.n.value)
+                datamasks.append(filtered_data)
+                nummasked.append(len(filtered_data==True))
+            except:
+                halflights.append('fit fail')
+                amps.append('fit fail')
+                ns.append('fit fail')
+                datamasks.append('fit fail')
+                nummasked.append('fit fail')
+
+                
+    return(pgcs,halflights,amps,ns,datamasks,nummasked)
+        
+def findHalfLightdf(pgcs,df1,df2):
+    halflights = []
+    #print('0')
+    for i in np.arange(len(pgcs)):
+        print(len(pgcs)-i)
+        galmask = df2.gal.isin([pgcs[i]])
+        rp = df2.loc[galmask]
+        if np.isnan(rp.r_arcsec).all()==True:
+            halflights.append('All NaN')
+            #print('1')
+        elif rp.r_arcsec.min()>200:
+            halflights.append('Bad Decomp')
+            #print('2')
+        else:
+            try:
+                r25 = df1.loc[i].R25_DEG*3600
+                mask = rp.r_arcsec<2*r25
+                rp = rp[mask]
+                
+                rp_clean,norm_x,norm_y,fx2,fy2 = fitExponentialFunc(rp)
+                #print('3')
+                rp_cum,norm_x,norm_y,fx2,fy2,popt,pcov = fitLogFunc(rp_clean)
+                #print('4')
+                xr = np.linspace(1e-3,rp_cum.r_arcsec.max(),100)
+                #print(popt)
+                ys =logfunc(xr,*popt)
+                ind = np.where(ys>0.5)[0][0]
+                mask = ys>0
+                halflight = np.abs(norm_x-xr[mask][ind])
+                halflights.append(halflight)
+            except:
+                halflights.append('fit fail')
+                
+    return(pgcs,halflights)
