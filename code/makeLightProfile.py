@@ -9,7 +9,7 @@ import astropy.units as u
 import astropy.constants as const
 import pandas as pd
 
-def runApertureLoop(path,df,bands,inputres,ind=None,saveIndividual=True):
+def runApertureLoop(path,df,bands,inputres,ind=None):
     pgcnames = ['PGC'+ str(i) for i in df.PGC.astype('int')]
     if ind==None:
         ind = len(pgcnames)
@@ -27,15 +27,12 @@ def runApertureLoop(path,df,bands,inputres,ind=None,saveIndividual=True):
                 pass
             else:
                 if len(stars) == 0:
-                    fulldf = lightProfile(file[0],0,df,i,band,wavesum[band],pgcnames[i],saveIndividual)
-
+                    lightProfile(file[0],0,df,i,band,wavesum[band],pgcnames[i])
                 else:
-                    fulldf = lightProfile(file[0],stars[0],df,i,band,wavesum[band],pgcnames[i],saveIndividual)
-                    
-    fulldf.to_pickle(band+'_radprofiles_7p5.pkl')
+                    lightProfile(file[0],stars[0],df,i,band,wavesum[band],pgcnames[i])
 
 
-def lightProfile(f,stars,df,i,band,wavlength,pgc,saveIndividual):
+def lightProfile(f,stars,df,i,band,wavlength,pgc):
     hdulist = fits.open(f)[0]
     data = hdulist.data
     w = wcs.WCS(hdulist.header)
@@ -69,14 +66,5 @@ def lightProfile(f,stars,df,i,band,wavlength,pgc,saveIndividual):
     ys = ys[mask]
     name = [str(pgc) for i in len(xs)]
     galdf = pd.DataFrame({'r_arcsec':xs,'I':sorteddata,'Norm_I':ys,'PGC':name})
+    galdf.to_csv('galaxycsvs/'+pgc+'_'+band+'_df.csv',index=None)
     
-    if saveIndividual==True:
-        galdf.to_csv('galaxycsvs/'+pgc+'_'+band+'_df.csv',index=None)
-        
-    else:
-        if i==0:
-            fulldf = galdf.copy()
-        else:
-            fulldf.append(galdf, ignore_index=True)
-        
-    return(fulldf)
