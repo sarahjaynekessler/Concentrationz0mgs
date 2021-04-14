@@ -60,7 +60,11 @@ def lightProfile(f,stars,df,i,band,wavlength,pgc):
     xs = rgrid[ind]*3600 #in arcsec
     sorteddata = hdulist.data[ind]
     ys = np.cumsum(sorteddata)/np.cumsum(sorteddata).max()
-    
-    galdf = pd.DataFrame({'r_arcsec':xs,'I':sorteddata,'Norm_I':ys})
+    mask = xs<400.0
+    xs = xs[mask]
+    sorteddata = sorteddata[mask]
+    ys = ys[mask]
+    name = [str(pgc) for i in len(xs)]
+    galdf = pd.DataFrame({'r_arcsec':xs,'I':sorteddata,'Norm_I':ys,'PGC':name})
     galdf.to_csv('galaxycsvs/'+pgc+'_'+band+'_df.csv',index=None)
     
