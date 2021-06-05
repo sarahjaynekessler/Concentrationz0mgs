@@ -137,8 +137,9 @@ def findHalfLightSersicdf(pgcs,df1,df2):
     #print('0')
     for i in np.arange(len(pgcs)):
         print(len(pgcs)-i)
-        galmask = df2.gal.isin([pgcs[i]])
+        galmask = df2.PGC.isin([pgcs[i]])
         rp = df2.loc[galmask]
+        #print(rp)
         pgc=pgcs[i]
         
         if np.isnan(rp.r_arcsec).all()==True:
@@ -156,15 +157,20 @@ def findHalfLightSersicdf(pgcs,df1,df2):
             #print('2')
         else:
             try:
-            
+                #print('3')
                 rp.r_arcsec/=3600.
                 r25 = df1.loc[i].R25_DEG
+                #print(r25)`=-0
+                #r25= r25.tolist()[0]
+                #print(r25)
                 mask = rp.r_arcsec<2*r25
+                #print(mask)
                 rp = rp[mask]
+                
                 #mask = rp.I>0
                 #rp = rp[mask]
                 ind = np.where(rp.r_arcsec<.5*r25)[0][-1]
-                
+
                 sersic = models.Sersic1D(bounds = {'n':(0,14)})
                 outlier_fit = fitting.FittingWithOutlierRemoval(fitting.LevMarLSQFitter(),sigma_clip, niter=3, sigma=2.5)
                 fitted_model,filtered_data = outlier_fit(sersic,rp.r_arcsec,rp.I)#,weights=0.1*rp.I)

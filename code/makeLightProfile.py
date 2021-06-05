@@ -83,6 +83,7 @@ def makeLargePickle(path,df,bands,inputres,ind=None):
         print(len(pgcnames[:ind]) - i)
         for band in bands:
             file = glob(path+pgcnames[i]+'_*'+band+'*'+inputres+'.fits')
+            #print(path+pgcnames[i]+'_*'+band+'*'+inputres+'.fits')
             stars = glob(path+pgcnames[i]+'_*'+band+'*'+inputres+'_stars.fits')
             wavlength = wavesum[band]
 
@@ -95,7 +96,9 @@ def makeLargePickle(path,df,bands,inputres,ind=None):
                 
 
             if len(file) == 0:
+                print('no file')
                 pass
+                
             else:
                 f = file[0]
                 pgc = pgcnames[i]
@@ -113,7 +116,7 @@ def makeLargePickle(path,df,bands,inputres,ind=None):
                     
                 racen,deccen = df.iloc[i].RA_DEG,df.iloc[i].DEC_DEG
                 pa,incl = df.iloc[i].POSANG_DEG,df.iloc[i].INCL_DEG
-                
+                #print('made it past ra stuff')
                 ra,dec = radec_maps(hdulist.header)
                 rgrid,tgrid = deproject(ra,dec,racen,deccen,pa,incl)
                 
@@ -135,12 +138,14 @@ def makeLargePickle(path,df,bands,inputres,ind=None):
                     ys = ys[mask]
                     name = [pgc for j in np.arange(len(xs))]
                     galdf = pd.DataFrame({'r_arcsec':xs,'I':sorteddata,'Norm_I':ys,'PGC':name})
-               # print(i)
+                #print(i)
                 if i==0:
                     fulldf = galdf.copy()
+                    #print('galdf copy')
                     #print(fulldf)
                 else:
                     fulldf = fulldf.append(galdf,ignore_index=True)
+                    #print('other gals')
                     #print(fulldf)
 
     return(fulldf)
